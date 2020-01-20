@@ -4,7 +4,7 @@ import tornado.ioloop
 import tornado.web
 import time, threading
 import subprocess
-
+import argparse
 
 HEATERS_GPIO = [36,37]
 LIGHTS_GPIO  = [38,39]
@@ -14,13 +14,13 @@ GPIO_PATH = "/gpio/pin"
 SERVER_PORT = 8888
 
 SERVICES = ['heater', 'lights']
-TIMES = [15, 30, 45, 60, 75, 90, 105, 120]
+TIMES = [1,2, 5,15, 30, 45, 60, 75, 90, 105, 120]
 COURTS = [1, 2]
 
 TIMERS_LIGHTS = [None, None]
 TIMERS_HEATER = [None, None]
 
-
+SHORT_TIMER = False
 
 def turnOnLights(court, time):
     global TIMERS_LIGHTS
@@ -28,12 +28,12 @@ def turnOnLights(court, time):
         TIMERS_LIGHTS[court-1].cancel()
     except:
         print('Timer not active')
-    
-    TIMERS_LIGHTS[court-1] = threading.Timer(2, turnOffLights, [court])
+
+    TIMERS_LIGHTS[court-1] = threading.Timer(time, turnOffLights, [court])
     TIMERS_LIGHTS[court-1].start()
     
     turnOnGpio(LIGHTS_GPIO[court-1])
-    print("turning on lights!")
+    print("LOG: Turning on lights. Court " + str(court) + " for " + str(time) + " seconds." )
     return 0
 
 
@@ -42,7 +42,7 @@ def turnOffLights(court):
     TIMERS_LIGHTS[court-1].cancel()
 
     turnOffGpio(LIGHTS_GPIO[court-1])
-    print("turning off lights of court %s", court)
+    print("LOG: Turning off lights: court " + str(court) )
     return 0
 
 
@@ -55,10 +55,11 @@ def turnOnHeater(court, time):
 
     turnOnGpio(HEATERS_GPIO[court-1])
     
-    TIMERS_HEATER[court-1] = threading.Timer(2, turnOffHeater, [court])
+    TIMERS_HEATER[court-1] = threading.Timer(time*60, turnOffHeater, [court])
     TIMERS_HEATER[court-1].start()
 
-    print("turning heater")
+    print("LOG: Turning on heater. Court " + str(court) + " for " + str(time) + " seconds." )
+
     return 0
 
 
@@ -67,12 +68,12 @@ def turnOffHeater(court):
     TIMERS_HEATER[court-1].cancel()
 
     turnOffGpio(HEATERS_GPIO[court-1])
-    print('tourning off heater of court %s', court)
+    print('LOG: tourning off heater: court' + str(court))
     return 0
 
 
 def setupGpio():
-    #set lights gpio
+    #set gpio in output mode
     for gpioNumber in LIGHTS_GPIO:
         f = open(GPIO_PATH + str(gpioNumber) + "/direction", "w+")
         f.write("out")
@@ -85,18 +86,22 @@ def setupGpio():
         f.flush()
         f.close()
 
-   
+def setupValues():
+    turnOffGpio(36)   
+    turnOffGpio(37)
+    turnOffGpio(38)
+    turnOffGpio(39)
 
-def turnOnGpio(pcbNumber):
+def turnOnGpio(gpioNumber):
     f = open(GPIO_PATH + str(gpioNumber) + "/value", "w+")
-    f.write("high")
+    f.write("0")
     f.flush()
     f.close() 
 
 
-def turnOffGpio(pcbNumber):
+def turnOffGpio(gpioNumber):
     f = open(GPIO_PATH + str(gpioNumber) + "/value", "w+")
-    f.write("low")
+    f.write("1")
     f.flush()
     f.close()
    
@@ -121,10 +126,11 @@ class HelloHandler(tornado.web.RequestHandler):
             return -2
 
         if not time in TIMES:
-            self.write("Wrond time")
+            self.write("Wrong time")
             return -3
     
-        print(service)
+        if not SHORT_TIMER:
+            time = time * 60
         
         if service == "heater":
             turnOnHeater(court, time)
@@ -132,7 +138,7 @@ class HelloHandler(tornado.web.RequestHandler):
         if service == 'lights':
             turnOnLights(court, time)
 
-        self.write("Turn on court %s %s for %s minutes." % (court, service, time))
+        self.write("Turn on court %s %s for %s seconds. (%s minutes)" % (court, service, time, time/60))
 
 
 
@@ -143,7 +149,21 @@ def make_app():
 
 
 def main():
+
+    global SHORT_TIMER
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('-t', action='store_true', dest='test')
+    args = parser.parse_args()  
+
+    print(args.test)
+
+    if args.test:
+         SHORT_TIMER = True
+         print("Short timer mode. For test.")
+
     setupGpio()
+    setupValues()
     return 0
 
 

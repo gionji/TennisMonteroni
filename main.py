@@ -14,7 +14,7 @@ GPIO_PATH = "/gpio/pin"
 SERVER_PORT = 8888
 
 SERVICES = ['heater', 'lights']
-TIMES = [1,2, 5,15, 30, 45, 60, 75, 90, 105, 120]
+TIMES = [0, 1,2, 5,15, 30, 45, 60, 75, 90, 105, 120]
 COURTS = [1, 2]
 
 TIMERS_LIGHTS = [None, None]
@@ -134,9 +134,9 @@ class HelloHandler(tornado.web.RequestHandler):
         
         if service == "heater":
             if time != 0:
-            	turnOnHeater(court, time)
-	    else:
-		turnOffHeater(court)
+                turnOnHeater(court, time)
+            else:
+                turnOffHeater(court)
 
         if service == 'lights':
             if time != 0:

@@ -133,12 +133,19 @@ class HelloHandler(tornado.web.RequestHandler):
             time = time * 60
         
         if service == "heater":
-            turnOnHeater(court, time)
+            if time != 0:
+            	turnOnHeater(court, time)
+	    else:
+		turnOffHeater(court)
 
         if service == 'lights':
-            turnOnLights(court, time)
+            if time != 0:
+                turnOnLights(court, time)
+            else:
+                turnOffLights(court)
 
         self.write("Turn on court %s %s for %s seconds. (%s minutes)" % (court, service, time, time/60))
+
 
 
 
@@ -148,8 +155,8 @@ def make_app():
     ])
 
 
-def main():
 
+def main():
     global SHORT_TIMER
 
     parser = argparse.ArgumentParser(description='Process some integers.')
@@ -165,6 +172,7 @@ def main():
     setupGpio()
     setupValues()
     return 0
+
 
 
 
